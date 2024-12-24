@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prayer Times</title>
+    <style>
+        /* General Styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #eef2f3; /* Light gradient background */
+        }
+
+        /* Container for layout */
+        .container {
+            display: flex;
+            width: 90%;
+            max-width: 1000px;
+            background: #ffffff;
+            border: 2px solid #ccc;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        /* Prayer times section */
+        .prayer-times {
+            width: 50%;
+            padding: 20px;
+            background: #4e73df;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .prayer-time {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+
+        .prayer-time.active {
+            font-size: 22px;
+            font-weight: bold;
+            color: #ffcc00;
+        }
+
+        /* Hadith section */
+        .hadith {
+            width: 50%;
+            padding: 20px;
+            background: #1e3c72;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        #timer {
+            font-size: 20px;
+            color: #333;
+            margin-top: 15px;
+        }
+
+        /* Popup Styling */
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            text-align: center;
+            z-index: 9999; /* Always on top */
+        }
+
+        .popup h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .popup button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .popup button#yes-btn {
+            background: #4e73df;
+            color: white;
+        }
+
+        .popup button#no-btn {
+            background: #ff4d4d;
+            color: white;
+        }
+
+        /* Background overlay */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9998; /* Behind the popup */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Prayer Times Section -->
+        <div class="prayer-times" id="prayer-times">
+            <h3>Prayer Times</h3>
+            <div id="fajr" class="prayer-time"></div>
+            <div id="dhuhr" class="prayer-time"></div>
+            <div id="asr" class="prayer-time"></div>
+            <div id="maghrib" class="prayer-time"></div>
+            <div id="isha" class="prayer-time"></div>
+        </div>
+
+        <!-- Hadith Section -->
+        <div class="hadith" id="hadith">
+            <h3>Hadith of the Minute</h3>
+            <p id="hadith-text">“The best among you are those who have the best manners and character.” – Prophet Muhammad (PBUH)</p>
+        </div>
+    </div>
+
+    <div id="timer">Time until next prayer: <span id="countdown">--:--:--</span></div>
+    <p>An app error is happening. Problem is, location is not traced correctly. Another update pack will be sent. Error Code 500</p>
+
+    <!-- Location Popup -->
+    <div id="location-popup" class="popup" style="display: none;">
+        <h2>Allow Location Access?</h2>
+        <p>We need your location to display accurate prayer times.</p>
+        <button id="yes-btn">Yes</button>
+        <button id="no-btn">No</button>
+    </div>
+
+    <!-- Background Overlay -->
+    <div id="overlay" class="overlay" style="display: none;"></div>
+
+    <!-- Audio for Adhan -->
+    <audio id="adhan-audio" src="https://path/to/adhan.mp3" preload="auto"></audio>
+    
+<script>
+    // Array of hadiths
+    const hadiths = [
+    "The best among you are those who have the best manners and character. – Prophet Muhammad (PBUH)",
+    "Seek knowledge from the cradle to the grave. – Prophet Muhammad (PBUH)",
+    "The strong man is not the one who is able to overpower others, but the one who controls himself when angry. – Prophet Muhammad (PBUH)",
+    "Whoever believes in Allah and the Last Day should speak good or remain silent. – Prophet Muhammad (PBUH)",
+    "The most complete of the believers in faith are those with the best character. – Prophet Muhammad (PBUH)",
+    "The strong man is not the one who can overpower others, but the one who controls himself in the face of anger. - Bukhari and Muslim",
+    "None of you truly believes until he loves for his brother what he loves for himself. - Bukhari and Muslim",
+    "The best among you are those who have the best manners and character. - Bukhari and Muslim",
+    "Whoever believes in Allah and the Last Day should speak good or remain silent. - Bukhari and Muslim",
+    "The most beloved of deeds to Allah is the most regular and constant, even if it were little. - Bukhari and Muslim",
+    "The one who points to good is like the one who does it. - Muslim",
+    "Allah does not look at your appearance or wealth but looks at your hearts and actions. - Muslim",
+    "The best charity is that given when one is in need and struggling. - Bukhari",
+    "Make things easy for people, and do not make things difficult for them. - Bukhari and Muslim",
+    "The best of people are those who bring the most benefit to others. - Tabarani",
+    "A Muslim is the one from whose tongue and hand others are safe. - Bukhari and Muslim",
+    "Seek knowledge from the cradle to the grave. - Bayhaqi",
+    "The believer is not a person who insults, curses, or speaks indecently. - Tirmidhi",
+    "The best of you are those who are best to their families. - Tirmidhi",
+    "He who does not show mercy to people will not be shown mercy by Allah. - Bukhari and Muslim",
+    "Cleanliness is half of faith. - Muslim",
+    "When a man dies, his deeds come to an end except for three: ongoing charity, beneficial knowledge, or a righteous child who prays for him. - Muslim",
+    "Smiling in the face of your brother is an act of charity. - Tirmidhi",
+    "Do not waste water, even if you perform ablution on the bank of an abundantly-flowing river. - Ibn Majah",
+    "The best gift a father can provide for his child is a good upbringing. - Tirmidhi",
+    "The one who shows no gratitude to people shows no gratitude to Allah. - Ahmad",
+    "Modesty does not bring anything except good. - Bukhari and Muslim",
+    "He who guides someone to good will receive a reward like that of the one who does it. - Muslim",
+    "A true believer is like a mirror to his brother; he guides him when he sees a fault in him. - Abu Dawood",
+    "The upper hand is better than the lower hand (i.e., giving is better than receiving). - Bukhari and Muslim",
+    "A good word is also an act of charity. - Bukhari and Muslim",
+    "Feed the hungry, visit the sick, and free the captive. - Bukhari",
+    "The best prayer after the obligatory prayers is the night prayer. - Muslim",
+    "He who has in his heart the weight of a mustard seed of arrogance shall not enter Paradise. - Muslim",
+    "Paradise lies at the feet of your mother. - Ahmad"
+];
+
+
+    let currentHadithIndex = 0;
+
+    function updateHadith() {
+        const hadithText = document.getElementById('hadith-text');
+        hadithText.innerText = hadiths[currentHadithIndex];
+        currentHadithIndex = (currentHadithIndex + 1) % hadiths.length;
+    }
+
+    let prayerTimes = {};
+    function fetchPrayerTimes(city, country) {
+        const url = `https://api.aladhan.com/v1/timingsByCity?city=${city}&country=${country}&method=2`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const timings = data.data.timings;
+                prayerTimes = {
+                    Fajr: timings.Fajr,
+                    Dhuhr: timings.Dhuhr,
+                    Asr: timings.Asr,
+                    Maghrib: timings.Maghrib,
+                    Isha: timings.Isha
+                };
+                updatePrayerTimesDisplay();
+                startTimer();
+            })
+            .catch(() => alert('Error fetching prayer times. Please try again.'));
+    }
+
+    function updatePrayerTimesDisplay() {
+        document.getElementById('fajr').innerText = `Fajr: ${prayerTimes.Fajr}`;
+        document.getElementById('dhuhr').innerText = `Dhuhr: ${prayerTimes.Dhuhr}`;
+        document.getElementById('asr').innerText = `Asr: ${prayerTimes.Asr}`;
+        document.getElementById('maghrib').innerText = `Maghrib: ${prayerTimes.Maghrib}`;
+        document.getElementById('isha').innerText = `Isha: ${prayerTimes.Isha}`;
+    }
+
+    function getNextPrayerTime() {
+        const now = new Date();
+        for (let [name, time] of Object.entries(prayerTimes)) {
+            const prayerDateTime = new Date();
+            const [hour, minute] = time.split(':');
+            prayerDateTime.setHours(hour, minute, 0);
+
+            if (prayerDateTime > now) {
+                return { name, time: prayerDateTime };
+            }
+        }
+        return null; // All prayers for the day have passed
+    }
+
+    function startTimer() {
+        const countdownElement = document.getElementById('countdown');
+
+        function updateCountdown() {
+            const nextPrayer = getNextPrayerTime();
+            if (nextPrayer) {
+                const now = new Date();
+                const diff = nextPrayer.time - now;
+
+                if (diff > 0) {
+                    const hours = Math.floor(diff / 3600000);
+                    const minutes = Math.floor((diff % 3600000) / 60000);
+                    const seconds = Math.floor((diff % 60000) / 1000);
+                    countdownElement.innerText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                } else {
+                    showPrayerAlert(nextPrayer.name);
+                }
+            }
+        }
+        setInterval(updateCountdown, 1000);
+    }
+
+    function showPrayerAlert(prayer) {
+        const alertBox = document.getElementById('alert-box');
+        alertBox.innerText = `It is time for ${prayer}!`;
+        alertBox.style.display = 'block';
+        document.getElementById('adhan-audio').play();
+
+        setTimeout(() => alertBox.style.display = 'none', 60000);
+    }
+
+    function askForLocation() {
+        const popup = document.getElementById('location-popup');
+        const overlay = document.getElementById('overlay');
+
+        popup.style.display = 'block';
+        overlay.style.display = 'block';
+
+        document.getElementById('yes-btn').onclick = function () {
+            popup.style.display = 'none';
+            overlay.style.display = 'none';
+            getUserLocation();
+        };
+
+        document.getElementById('no-btn').onclick = function () {
+            popup.style.display = 'none';
+            overlay.style.display = 'none';
+            alert('Please share us your location to ensure correct prayer timings.');
+        };
+    }
+
+    function getUserLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+
+                fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const city = data.city || 'Unknown';
+                        const country = data.countryName || 'Unknown';
+                        fetchPrayerTimes(city, country);
+                    })
+                    .catch(() => alert('Unable to determine location. Please try again.'));
+            }, () => alert('Location access denied. Please enable location to fetch accurate prayer times.'));
+        } else {
+            alert('Geolocation is not supported which breaks the app. Update to another version for your phone.');
+        }
+    }
+
+    // Initialize
+    askForLocation();
+    setInterval(updateHadith, 60000); // Update hadith every minute
+</script>
+</body>
+</html>
